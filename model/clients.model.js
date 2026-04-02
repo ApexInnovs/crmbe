@@ -1,27 +1,5 @@
 const mongoose = require('mongoose');
 
-const DocumentSchema = new mongoose.Schema({
-	title: {
-		type: String,
-		required: true,
-		trim: true,
-	},
-	type: {
-		type: String,
-		enum: ['Contract', 'Invoice', 'Requirement', 'Other'],
-		default: 'Other',
-	},
-	fileUrl: {
-		type: String,
-		required: true,
-		description: 'URL or file path to the uploaded document',
-	},
-	uploadedAt: {
-		type: Date,
-		default: Date.now,
-	},
-});
-
 const ProjectSchema = new mongoose.Schema({
 	name: {
 		type: String,
@@ -60,15 +38,10 @@ const ClientSchema = new mongoose.Schema({
 		required: true,
 	},
 	managedBy: {
-		type: mongoose.Schema.Types.ObjectId,
-		ref: 'Employee',
+		type: String,
 	},
-	projectDetails: {
-		type: ProjectSchema,
-		default: () => ({}),
-	},
-	documents: {
-		type: [DocumentSchema],
+	projects: {
+		type: [ProjectSchema],
 		default: [],
 	},
 	notes: {

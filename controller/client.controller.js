@@ -4,19 +4,19 @@ const mongoose = require('mongoose');
 // Create client
 exports.createClient = async (req, res) => {
     try {
-        const { lead_id, company, managedBy, projectDetails, documents, notes, status } = req.body;
+        const { lead_id, company, managedBy, projects, notes, status } = req.body;
         if (!lead_id || !mongoose.Types.ObjectId.isValid(lead_id)) {
             return res.status(400).json({ message: 'Valid lead_id is required.' });
         }
         if (!company || !mongoose.Types.ObjectId.isValid(company)) {
             return res.status(400).json({ message: 'Valid company ID is required.' });
         }
+        // managedBy is now a string, no ObjectId validation
         const client = new Client({
             lead_id,
             company,
-            managedBy,
-            projectDetails: projectDetails || {},
-            documents: documents || [],
+            managedBy: managedBy || '',
+            projects: Array.isArray(projects) ? projects : [],
             notes: notes || null,
             status: typeof status !== 'undefined' ? status : 1,
             deleted: false
@@ -41,14 +41,13 @@ exports.getClients = async (req, res) => {
         if (search) {
             query.$or = [
                 { notes: { $regex: search, $options: 'i' } },
-                { 'projectDetails.name': { $regex: search, $options: 'i' } },
-                { 'projectDetails.description': { $regex: search, $options: 'i' } },
-                { 'documents.title': { $regex: search, $options: 'i' } }
+                { 'projects.name': { $regex: search, $options: 'i' } },
+                { 'projects.description': { $regex: search, $options: 'i' } }
             ];
         }
         const total = await Client.countDocuments(query);
         const clients = await Client.find(query)
-            .populate('lead_id company managedBy')
+            .populate('lead_id company') // managedBy is now a string, do not populate
             .skip((page - 1) * limit)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -72,7 +71,7 @@ exports.getClientById = async (req, res) => {
             return res.status(400).json({ message: 'Invalid client ID' });
         }
         const client = await Client.findOne({ _id: req.params.id, deleted: { $ne: true } })
-            .populate('lead_id company managedBy')
+            .populate('lead_id company') // managedBy is now a string, do not populate
             .lean();
         if (!client) return res.status(404).json({ message: 'Client not found' });
         res.json(client);
@@ -87,18 +86,17 @@ exports.updateClient = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(400).json({ message: 'Invalid client ID' });
         }
-        const { projectDetails, documents, notes, status, managedBy } = req.body;
+        const { projects, notes, status, managedBy } = req.body;
         const updateData = { updatedAt: new Date() };
-        if (projectDetails) updateData.projectDetails = projectDetails;
-        if (documents) updateData.documents = documents;
+        if (projects) updateData.projects = projects;
         if (notes) updateData.notes = notes;
         if (typeof status !== 'undefined') updateData.status = Number(status);
-        if (managedBy) updateData.managedBy = managedBy;
+        if (typeof managedBy !== 'undefined') updateData.managedBy = managedBy;
         const client = await Client.findOneAndUpdate(
             { _id: req.params.id, deleted: { $ne: true } },
             updateData,
             { new: true }
-        ).populate('lead_id company managedBy').lean();
+        ).populate('lead_id company').lean(); // managedBy is now a string, do not populate
         if (!client) return res.status(404).json({ message: 'Client not found' });
         res.json(client);
     } catch (error) {
@@ -119,50 +117,6 @@ exports.deleteClient = async (req, res) => {
         );
         if (!client) return res.status(404).json({ message: 'Client not found' });
         res.json({ message: 'Client soft deleted' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// Add document to client
-exports.addDocument = async (req, res) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ message: 'Invalid client ID' });
-        }
-        const { title, type, fileUrl } = req.body;
-        if (!title || !fileUrl) {
-            return res.status(400).json({ message: 'Document title and fileUrl are required.' });
-        }
-        const client = await Client.findOneAndUpdate(
-            { _id: req.params.id, deleted: { $ne: true } },
-            { $push: { documents: { title, type: type || 'Other', fileUrl, uploadedAt: new Date() } }, updatedAt: new Date() },
-            { new: true }
-        ).populate('lead_id company managedBy').lean();
-        if (!client) return res.status(404).json({ message: 'Client not found' });
-        res.json(client);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// Add note to client
-exports.addNote = async (req, res) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ message: 'Invalid client ID' });
-        }
-        const { note } = req.body;
-        if (!note || typeof note !== 'string') {
-            return res.status(400).json({ message: 'Note must be a string.' });
-        }
-        const client = await Client.findOneAndUpdate(
-            { _id: req.params.id, deleted: { $ne: true } },
-            { notes: note, updatedAt: new Date() },
-            { new: true }
-        ).populate('lead_id company managedBy').lean();
-        if (!client) return res.status(404).json({ message: 'Client not found' });
-        res.json(client);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

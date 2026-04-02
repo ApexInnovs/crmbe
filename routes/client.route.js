@@ -33,13 +33,27 @@ const clientController = require('../controller/client.controller');
  *                 description: Company ID
  *               managedBy:
  *                 type: string
- *                 description: Employee ID
- *               projectDetails:
- *                 type: object
- *               documents:
+ *                 description: Manager name or ID
+ *               projects:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     startDate:
+ *                       type: string
+ *                       format: date
+ *                     deadline:
+ *                       type: string
+ *                       format: date
+ *                     budget:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                       enum: [Not Started, In Progress, On Hold, Completed, Cancelled]
  *               notes:
  *                 type: string
  *               status:
@@ -126,12 +140,26 @@ router.get('/clients', clientController.getClients);
  *           schema:
  *             type: object
  *             properties:
- *               projectDetails:
- *                 type: object
- *               documents:
+ *               projects:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     startDate:
+ *                       type: string
+ *                       format: date
+ *                     deadline:
+ *                       type: string
+ *                       format: date
+ *                     budget:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                       enum: [Not Started, In Progress, On Hold, Completed, Cancelled]
  *               notes:
  *                 type: string
  *               status:
@@ -162,82 +190,9 @@ router.get('/clients', clientController.getClients);
  *       404:
  *         description: Client not found
  */
+
 router.get('/clients/:id', clientController.getClientById);
 router.patch('/clients/:id', clientController.updateClient);
 router.delete('/clients/:id', clientController.deleteClient);
-
-/**
- * @swagger
- * /clients/{id}/document:
- *   post:
- *     summary: Add document to client
- *     tags: [Client]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Client ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - fileUrl
- *             properties:
- *               title:
- *                 type: string
- *               type:
- *                 type: string
- *                 enum: [Contract, Invoice, Requirement, Other]
- *               fileUrl:
- *                 type: string
- *     responses:
- *       200:
- *         description: Document added
- *       400:
- *         description: Validation error
- *       404:
- *         description: Client not found
- */
-router.post('/clients/:id/document', clientController.addDocument);
-
-/**
- * @swagger
- * /clients/{id}/note:
- *   post:
- *     summary: Add note to client
- *     tags: [Client]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Client ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - note
- *             properties:
- *               note:
- *                 type: string
- *     responses:
- *       200:
- *         description: Note added
- *       400:
- *         description: Validation error
- *       404:
- *         description: Client not found
- */
-router.post('/clients/:id/note', clientController.addNote);
 
 module.exports = router;
