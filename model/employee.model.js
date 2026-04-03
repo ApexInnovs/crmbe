@@ -39,6 +39,9 @@ const EmployeeSchema = new mongoose.Schema({
 		type: Number,
 		default: 1, // 1-active, 0-inactive
 	},
+	jwtToken: {
+		type: String,
+	},
 	createdAt: {
 		type: Date,
 		default: Date.now,

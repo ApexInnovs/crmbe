@@ -109,10 +109,15 @@ exports.getEmployees = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(limit)
       .sort(sortObj)
-      .select("-credentialId")
+      .select("-credentialId -jwtToken")
       .lean();
+    // Remove jwtToken if present (in case select is bypassed)
+    const sanitizedEmployees = employees.map(emp => {
+      if (emp.jwtToken) delete emp.jwtToken;
+      return emp;
+    });
     res.json({
-      data: employees,
+      data: sanitizedEmployees,
       page,
       limit,
       total,
@@ -131,11 +136,13 @@ exports.getEmployeeById = async (req, res) => {
       deleted: { $ne: true },
     })
       .populate("role company")
-      .select("-credentialId")
+      .select("-credentialId -jwtToken")
       .lean();
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
+    // Remove jwtToken if present (in case select is bypassed)
+    if (employee.jwtToken) delete employee.jwtToken;
     res.json(employee);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -179,7 +186,10 @@ exports.updateEmployee = async (req, res) => {
     return res.status(422).json({ errors });
   }
   try {
-    const { password, email, ...rest } = req.body;
+    const { password, email, jwtToken, ...rest } = req.body;
+    if (jwtToken !== undefined) {
+      return res.status(400).json({ message: "Updating jwtToken is not allowed" });
+    }
     let updateData = { ...rest, updatedAt: new Date() };
     const employee = await Employee.findOne({
       _id: req.params.id,
@@ -212,7 +222,7 @@ exports.updateEmployee = async (req, res) => {
       { new: true, runValidators: true },
     )
       .populate("role company")
-      .select("-credentialId")
+      .select("-credentialId -jwtToken")
       .lean();
     res.json(updatedEmployee);
   } catch (error) {
@@ -268,6 +278,9 @@ exports.login = async (req, res) => {
       email: employee.email,
       userType: "employee",
     });
+    if(token){
+      await Employee.findByIdAndUpdate(employee._id, { jwtToken: token });
+    }
     res.json({ token, employee });
   } catch (error) {
     res.status(500).json({ message: error.message });

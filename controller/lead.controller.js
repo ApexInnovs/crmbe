@@ -120,6 +120,32 @@ exports.updateLead = async (req, res) => {
         if (callRecordingText) updateData.callRecordingText = callRecordingText;
         if (screenshots && Array.isArray(screenshots)) updateData.screenshots = screenshots;
         if (leadData) updateData.leadData = leadData;
+        if (status) updateData.status = status;
+
+        // If callRecording is present and is a URL, check and decrement credits
+        if (callRecording && typeof callRecording === 'string' && (callRecording.startsWith('http://') || callRecording.startsWith('https://'))) {
+            // Find the lead to get the company
+            const leadDoc = await Lead.findOne({ _id: req.params.id, deleted: { $ne: true } }).session(session);
+            if (!leadDoc) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: 'Lead not found' });
+            }
+            const company = await require('../model/Company.model').findById(leadDoc.company).session(session);
+            if (!company) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: 'Company not found' });
+            }
+            if (!company.creditsLeft || company.creditsLeft <= 0) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ message: 'No credits left. Cannot upload call recording.' });
+            }
+            company.creditsLeft -= 1;
+            await company.save({ session });
+        }
+
         let lead = await Lead.findOneAndUpdate(
             { _id: req.params.id, deleted: { $ne: true } },
             updateData,
@@ -132,15 +158,23 @@ exports.updateLead = async (req, res) => {
         }
         // If status changes to 'coustomer', create client
         if (status && status === 'coustomer') {
-            const clientData = {
-                company: lead.company,
-                leadId: lead._id,
-                clientData: lead.leadData,
-                createdBy: lead.createdBy,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            };
-            await Client.create([clientData], { session });
+            try {
+                const clientData = {
+                    company: lead.company,
+                    lead_id: lead._id,
+                    managedBy: lead.assignedTo ? lead.assignedTo.toString() : '',
+                    notes: Array.isArray(lead.notes) && lead.notes.length > 0 ? lead.notes.map(n => n.text).join('\n') : '',
+                    status: 1,
+                    projects: [],
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+                await Client.create([clientData], { session });
+            } catch (clientErr) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(500).json({ message: 'Failed to create client from lead', error: clientErr.message });
+            }
         }
         await session.commitTransaction();
         session.endSession();

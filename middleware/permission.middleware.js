@@ -60,6 +60,10 @@
           if (!user || user.status !== 1) {
             return res.status(440).json({ message: "logout", reason: "Invalid or inactive employee user" });
           }
+          // Check if the token matches the one stored in DB
+          if (!user.jwtToken || user.jwtToken !== token) {
+            return res.status(440).json({ message: "logout", reason: "Session expired or logged in elsewhere" });
+          }
           if (requiredPermission) {
             // Check if role is active
             if (!user.role || user.role.status !== 1) {
