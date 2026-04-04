@@ -185,47 +185,52 @@ exports.updateEmployee = async (req, res) => {
   if (errors.length > 0) {
     return res.status(422).json({ errors });
   }
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const { password, email, jwtToken, ...rest } = req.body;
     if (jwtToken !== undefined) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: "Updating jwtToken is not allowed" });
     }
     let updateData = { ...rest, updatedAt: new Date() };
     const employee = await Employee.findOne({
       _id: req.params.id,
       deleted: { $ne: true },
-    });
+    }).session(session);
     if (!employee) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "Employee not found" });
     }
+    const credential = await Credential.findById(employee.credentialId).session(session);
     // Update password in credential if provided
-    if (password) {
-      const credential = await Credential.findById(employee.credentialId);
-      if (credential) {
-        credential.password = await hashPassword(password);
-        await credential.save();
-      }
+    if (password && credential) {
+      credential.password = await hashPassword(password);
+      await credential.save({ session });
     }
-    // Update email in credential if provided
-    if (email) {
-      const credential = await Credential.findById(employee.credentialId);
-      if (credential) {
-        credential.email = email;
-        await credential.save();
-      }
+    // Update email in credential if changed
+    if (email && credential && email !== employee.email) {
+      credential.email = email;
+      await credential.save({ session });
       updateData.email = email;
     }
     // Update employee fields
     const updatedEmployee = await Employee.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true },
+      { new: true, runValidators: true, session },
     )
       .populate("role company")
       .select("-credentialId -jwtToken")
       .lean();
+    await session.commitTransaction();
+    session.endSession();
     res.json(updatedEmployee);
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(400).json({ message: error.message });
   }
 };
