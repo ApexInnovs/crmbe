@@ -69,7 +69,7 @@ exports.getLeads = async (req, res) => {
         }
         const total = await Lead.countDocuments(query);
         const leads = await Lead.find(query)
-            .populate('campigne company createdBy')
+            .populate('campigne company createdBy assignedTo')
             .skip((page - 1) * limit)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -93,7 +93,7 @@ exports.getLeadById = async (req, res) => {
             return res.status(400).json({ message: 'Invalid lead ID' });
         }
         const lead = await Lead.findOne({ _id: req.params.id, deleted: { $ne: true } })
-            .populate('campigne company createdBy')
+            .populate('campigne company createdBy assignedTo')
             .lean();
         if (!lead) return res.status(404).json({ message: 'Lead not found' });
         res.json(lead);
@@ -112,7 +112,7 @@ exports.updateLead = async (req, res) => {
             session.endSession();
             return res.status(400).json({ message: 'Invalid lead ID' });
         }
-        const { nextMeetingDate, notes, status, callRecording, callRecordingText, screenshots, leadData } = req.body;
+        const { nextMeetingDate, notes, status, callRecording, callRecordingText, screenshots, leadData, assignedTo } = req.body;
         const updateData = { updatedAt: new Date() };
         if (nextMeetingDate) updateData.nextMeetingDate = nextMeetingDate;
         if (notes && Array.isArray(notes)) updateData.notes = notes;
@@ -121,6 +121,7 @@ exports.updateLead = async (req, res) => {
         if (screenshots && Array.isArray(screenshots)) updateData.screenshots = screenshots;
         if (leadData) updateData.leadData = leadData;
         if (status) updateData.status = status;
+        if (assignedTo) updateData.assignedTo = assignedTo;
 
         // If callRecording is present and is a URL, check and decrement credits
         if (callRecording && typeof callRecording === 'string' && (callRecording.startsWith('http://') || callRecording.startsWith('https://'))) {
