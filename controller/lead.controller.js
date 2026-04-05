@@ -194,10 +194,16 @@ exports.updateLead = async (req, res) => {
     // If status changes to 'coustomer', create client
     if (status && status === "coustomer") {
       try {
+        // Populate assignedTo to get the name
+        let assignedToName = "";
+        if (lead.assignedTo) {
+          const assignedEmp = await Employee.findById(lead.assignedTo).select('name');
+          assignedToName = assignedEmp ? assignedEmp.name : "";
+        }
         const clientData = {
           company: lead.company,
           lead_id: lead._id,
-          managedBy: lead.assignedTo ? lead.assignedTo.toString() : "",
+          managedBy: assignedToName,
           notes:
             Array.isArray(lead.notes) && lead.notes.length > 0
               ? lead.notes.map((n) => n.text).join("\n")
