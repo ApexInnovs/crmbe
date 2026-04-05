@@ -1,6 +1,6 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const campigneController = require('../controller/campigne.controller');
+const campigneController = require("../controller/campigne.controller");
 
 /**
  * @swagger
@@ -67,7 +67,7 @@ const campigneController = require('../controller/campigne.controller');
  *       400:
  *         description: Validation error
  */
-router.post('/campigne', campigneController.createCampigne);
+router.post("/campigne", campigneController.createCampigne);
 
 /**
  * @swagger
@@ -106,7 +106,10 @@ router.post('/campigne', campigneController.createCampigne);
  *       200:
  *         description: List of campaigns
  */
-router.get('/campigne/company/:companyId', campigneController.getCampignesByCompanyId);
+router.get(
+  "/campigne/company/:companyId",
+  campigneController.getCampignesByCompanyId,
+);
 
 /**
  * @swagger
@@ -127,7 +130,7 @@ router.get('/campigne/company/:companyId', campigneController.getCampignesByComp
  *       404:
  *         description: Campaign not found
  */
-router.get('/campigne/:id', campigneController.getCampigneById);
+router.get("/campigne/:id", campigneController.getCampigneById);
 
 /**
  * @swagger
@@ -186,7 +189,7 @@ router.get('/campigne/:id', campigneController.getCampigneById);
  *       404:
  *         description: Campaign not found
  */
-router.patch('/campigne/:id', campigneController.updateCampigne);
+router.patch("/campigne/:id", campigneController.updateCampigne);
 
 /**
  * @swagger
@@ -207,6 +210,27 @@ router.patch('/campigne/:id', campigneController.updateCampigne);
  *       404:
  *         description: Campaign not found
  */
-router.delete('/campigne/:id', campigneController.deleteCampigne);
+router.delete("/campigne/:id", campigneController.deleteCampigne);
+
+/**
+ * @swagger
+ * /campigne/{id}/restore:
+ *   patch:
+ *     summary: Restore soft deleted campaign by ID
+ *     tags: [Campigne]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Campaign ID
+ *     responses:
+ *       200:
+ *         description: Campaign restored
+ *       404:
+ *         description: Campaign not found
+ */
+router.patch("/campigne/:id/restore", campigneController.restoreCampigne);
 
 module.exports = router;
