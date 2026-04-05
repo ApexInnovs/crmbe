@@ -77,6 +77,17 @@ const LeadSchema = new mongoose.Schema({
 		type: Date,
 		default: Date.now,
 	}
+,
+// AI review and call performance analytics
+ai_review: {
+	type: String,
+	default: null,
+	description: 'AI-generated review or feedback for this lead/call.'
+},
+call_performance: {
+	type: Number,
+	 max: 10,
+}
 }, { timestamps: true });
 
 module.exports = mongoose.model('Lead', LeadSchema);

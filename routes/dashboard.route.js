@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const dashboardController = require('../controller/companyDashboard');
-
+const {getCompanyDashboard} = require('../controller/comapnydashboard');
 /**
  * @swagger
  * /dashboard/company:
@@ -37,6 +36,6 @@ const dashboardController = require('../controller/companyDashboard');
  *       500:
  *         description: Server error
  */
-router.get('/company', dashboardController.getCompanyDashboard);
+router.get('/dashboard/company',getCompanyDashboard);
 
 module.exports = router;
