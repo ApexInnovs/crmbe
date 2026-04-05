@@ -79,28 +79,84 @@ const clientController = require('../controller/client.controller');
  *           type: integer
  *         description: Items per page
  *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search by notes, project name, document title
- *       - in: query
  *         name: status
  *         schema:
  *           type: integer
- *         description: Client status
+ *         description: Client status (1-active, 0-inactive)
  *       - in: query
  *         name: company
  *         schema:
  *           type: string
- *         description: Company ID
+ *         description: Company ID (ObjectId)
  *       - in: query
  *         name: managedBy
  *         schema:
  *           type: string
- *         description: Employee ID
+ *         description: Manager name or ID
+ *       - in: query
+ *         name: campaign
+ *         schema:
+ *           type: string
+ *         description: Campaign ID (ObjectId)
+ *       - in: query
+ *         name: leadName
+ *         schema:
+ *           type: string
+ *         description: Search by lead name or email (partial, case-insensitive)
  *     responses:
  *       200:
- *         description: List of clients
+ *         description: List of clients (with populated company, lead, and campaign info)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       lead_id:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           campigne:
+ *                             type: object
+ *                             properties:
+ *                               _id:
+ *                                 type: string
+ *                               title:
+ *                                 type: string
+ *                           status:
+ *                             type: string
+ *                           leadData:
+ *                             type: object
+ *                           nextMeetingDate:
+ *                             type: string
+ *                             format: date-time
+ *                       company:
+ *                         type: object
+ *                       managedBy:
+ *                         type: string
+ *                       status:
+ *                         type: integer
+ *                       notes:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 total:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
  */
 router.post('/clients', clientController.createClient);
 router.get('/clients', clientController.getClients);

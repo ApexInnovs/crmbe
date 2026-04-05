@@ -34,41 +34,109 @@ exports.getClients = async (req, res) => {
     let {
       page = 1,
       limit = 10,
-      search = "",
       status,
       company,
       managedBy,
       campaign,
+      leadName
     } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
-    const query = { deleted: { $ne: true } };
-    if (company) query.company = company;
-    if (managedBy) query.managedBy = managedBy;
-    if (typeof status !== "undefined") query.status = Number(status);
-    if (search) {
-      query.$or = [
-        { notes: { $regex: search, $options: "i" } },
-        { "projects.name": { $regex: search, $options: "i" } },
-        { "projects.description": { $regex: search, $options: "i" } },
-      ];
-    }
-    const total = await Client.countDocuments(query);
-    const clients = await Client.find(query)
-      .populate([
-        { path: "company" },
-        {
-          path: "lead_id",
-          populate: {
-            path: "campigne",
-            select: "title",
+
+    // Build aggregation pipeline
+    const pipeline = [
+      // Match base client filters
+      {
+        $match: {
+          deleted: { $ne: true },
+          ...(company ? { company: mongoose.Types.ObjectId.isValid(company) ? new mongoose.Types.ObjectId(company) : company } : {}),
+          ...(managedBy ? { managedBy } : {}),
+          ...(typeof status !== "undefined" ? { status: Number(status) } : {}),
+        }
+      },
+      // Join with Lead collection
+      {
+        $lookup: {
+          from: "leads",
+          localField: "lead_id",
+          foreignField: "_id",
+          as: "lead_info"
+        }
+      },
+      { $unwind: "$lead_info" },
+      // Filter by campaign (if provided)
+      ...(campaign ? [{
+        $match: {
+          "lead_info.campigne": mongoose.Types.ObjectId.isValid(campaign) ? new mongoose.Types.ObjectId(campaign) : campaign
+        }
+      }] : []),
+      // Filter by leadName (if provided)
+      ...(leadName ? [{
+        $match: {
+          $or: [
+            { "lead_info.leadData.name": { $regex: leadName, $options: "i" } },
+            { "lead_info.leadData.email": { $regex: leadName, $options: "i" } }
+          ]
+        }
+      }] : []),
+      // Join with Campaign for population
+      {
+        $lookup: {
+          from: "campignes",
+          localField: "lead_info.campigne",
+          foreignField: "_id",
+          as: "campaign_info"
+        }
+      },
+      { $unwind: { path: "$campaign_info", preserveNullAndEmptyArrays: true } },
+      // Join with Company
+      {
+        $lookup: {
+          from: "companies",
+          localField: "company",
+          foreignField: "_id",
+          as: "company_info"
+        }
+      },
+      { $unwind: "$company_info" },
+      // Project final shape
+      {
+        $project: {
+          lead_id: {
+            _id: "$lead_info._id",
+            campigne: {
+              _id: "$campaign_info._id",
+              title: "$campaign_info.title"
+            },
+            status: "$lead_info.status",
+            leadData: "$lead_info.leadData",
+            nextMeetingDate: "$lead_info.nextMeetingDate"
           },
-        },
-      ])
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ createdAt: -1 })
-      .lean();
+          company: "$company_info",
+          managedBy: 1,
+          status: 1,
+          notes: 1,
+          createdAt: 1,
+          updatedAt: 1
+        }
+      },
+      // Pagination and total count
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $sort: { createdAt: -1 } },
+            { $skip: (page - 1) * limit },
+            { $limit: limit }
+          ]
+        }
+      }
+    ];
+
+    const result = await Client.aggregate(pipeline);
+    const total = result[0].metadata[0]?.total || 0;
+    const clients = result[0].data;
+
     res.json({
       data: clients,
       page,
