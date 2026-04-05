@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const leadController = require('../controller/lead.controller');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const leadController = require("../controller/lead.controller");
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
 
 /**
  * @swagger
@@ -85,8 +85,8 @@ const upload = multer({ dest: 'uploads/' });
  *       200:
  *         description: List of leads
  */
-router.post('/leads', leadController.createLead);
-router.get('/leads', leadController.getLeads);
+router.post("/leads", leadController.createLead);
+router.get("/leads", leadController.getLeads);
 
 /**
  * @swagger
@@ -174,11 +174,9 @@ router.get('/leads', leadController.getLeads);
  *       404:
  *         description: Lead not found
  */
-router.get('/leads/:id', leadController.getLeadById);
-router.patch('/leads/:id', leadController.updateLead);
-router.delete('/leads/:id', leadController.deleteLead);
-
-
+router.get("/leads/:id", leadController.getLeadById);
+router.patch("/leads/:id", leadController.updateLead);
+router.delete("/leads/:id", leadController.deleteLead);
 
 /**
  * @swagger
@@ -210,7 +208,7 @@ router.delete('/leads/:id', leadController.deleteLead);
  *       400:
  *         description: Validation error or no active employees found.
  */
-router.post('/assign/equal', leadController.assignLeadsEqually);
+router.post("/assign/equal", leadController.assignLeadsEqually);
 
 /**
  * @swagger
@@ -242,7 +240,7 @@ router.post('/assign/equal', leadController.assignLeadsEqually);
  *       400:
  *         description: Validation error.
  */
-router.post('/assign/to-employee', leadController.assignLeadsToEmployee);
+router.post("/assign/to-employee", leadController.assignLeadsToEmployee);
 
 /**
  * @swagger
@@ -279,7 +277,10 @@ router.post('/assign/to-employee', leadController.assignLeadsToEmployee);
  *       400:
  *         description: Validation error.
  */
-router.get('/by-campaign-employee', leadController.getLeadsByCampaignAndEmployee);
+router.get(
+  "/by-campaign-employee",
+  leadController.getLeadsByCampaignAndEmployee,
+);
 
 /**
  * @swagger
@@ -310,6 +311,13 @@ router.get('/by-campaign-employee', leadController.getLeadsByCampaignAndEmployee
  *       500:
  *         description: Server error.
  */
-router.post('/leads/bulk-upload', upload.single('file'), leadController.bulkUploadLeads);
+router.post(
+  "/leads/bulk-upload",
+  upload.single("file"),
+  leadController.bulkUploadLeads,
+);
+
+// Import leads from JSON (parsed on frontend)
+router.post("/leads/import", leadController.importLeads);
 
 module.exports = router;
