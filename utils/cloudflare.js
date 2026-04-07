@@ -11,7 +11,6 @@ const s3 = new AWS.S3({
 });
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET;
-
 // Upload file (image or audio)
 async function uploadFile(fileBuffer, fileName, mimeType) {
 	const ext = path.extname(fileName).toLowerCase();
@@ -25,7 +24,9 @@ async function uploadFile(fileBuffer, fileName, mimeType) {
 		ContentType: mimeType,
 		ACL: 'public-read',
 	};
+	console.log('Uploading file to Cloudflare R2 with params: ', params);
 	const data = await s3.upload(params).promise();
+	console.log(' the data is ',data)
 	return data.Location;
 }
 

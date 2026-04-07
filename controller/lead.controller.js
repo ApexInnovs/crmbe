@@ -6,6 +6,8 @@ const fs = require("fs");
 const path = require("path");
 const parse = require("csv-parse/sync").parse;
 const XLSX = require("xlsx");
+const { consumeCompanyCredits } = require("../utils/conumeToken");
+const { speechToTextAndRate } = require("../utils/speechTotext");
 
 // Helper: Validate lead status
 const validStatuses = [
@@ -145,40 +147,28 @@ exports.updateLead = async (req, res) => {
     if (status) updateData.status = status;
     if (assignedTo) updateData.assignedTo = assignedTo;
 
-    // If callRecording is present and is a URL, check and decrement credits
+    // Get the previous lead to compare callRecording
+    const prevLead = await Lead.findOne({ _id: req.params.id, deleted: { $ne: true } }).lean();
+    if (!prevLead) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    // Only process speech-to-text if callRecording is new or changed
+    let shouldProcessSpeech = false;
+    let companyIdForSpeech = null;
     if (
       callRecording &&
       typeof callRecording === "string" &&
-      (callRecording.startsWith("http://") ||
-        callRecording.startsWith("https://"))
+      (callRecording.startsWith("http://") || callRecording.startsWith("https://")) &&
+      callRecording !== prevLead.callRecording
     ) {
-      // Find the lead to get the company
-      const leadDoc = await Lead.findOne({
-        _id: req.params.id,
-        deleted: { $ne: true },
-      }).session(session);
-      if (!leadDoc) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      const company = await require("../model/Company.model")
-        .findById(leadDoc.company)
-        .session(session);
-      if (!company) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(404).json({ message: "Company not found" });
-      }
-      if (!company.creditsLeft || company.creditsLeft <= 0) {
-        await session.abortTransaction();
-        session.endSession();
-        return res
-          .status(400)
-          .json({ message: "No credits left. Cannot upload call recording." });
-      }
-      company.creditsLeft -= 1;
-      await company.save({ session });
+      shouldProcessSpeech = true;
+      companyIdForSpeech = prevLead.company;
+      // Remove any previous callRecordingText/rating for this update
+      updateData.callRecordingText = undefined;
+      updateData.callRecordingRating = undefined;
     }
 
     let lead = await Lead.findOneAndUpdate(
@@ -228,6 +218,37 @@ exports.updateLead = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
     res.json(lead);
+
+
+    // ASYNC: If call recording changed, process speech-to-text and rating
+    if (shouldProcessSpeech && companyIdForSpeech) {
+      (async () => {
+        try {
+          try {
+            await consumeCompanyCredits(companyIdForSpeech, 1);
+          } catch (creditErr) {
+            require("../utils/logger").error("Async speech-to-text: " + creditErr.message);
+            return;
+          }
+          // Pass the URL directly to speechToTextAndRate
+          const result = await speechToTextAndRate(callRecording);
+          console.log("Speech-to-text result:", result);
+          // Update the lead with transcription and rating
+          await Lead.findByIdAndUpdate(
+            lead._id,
+            {
+              callRecordingText: result.text,
+              callRecordingRating: result.rating,
+              callRecordingRubric: result.rubricBreakdown,
+            },
+            { new: false }
+          );
+        } catch (err) {
+          // Log error but do not affect main response
+          require("../utils/logger").error("Async speech-to-text failed: " + err.message);
+        }
+      })();
+    }
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
