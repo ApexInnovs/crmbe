@@ -30,8 +30,8 @@ async function handleUpload(req, res) {
     // Remove local file
     fs.unlinkSync(filePath);
     // Optionally: Remove from Cloudflare after upload (not typical, but per user request)
-    await deleteFile(fileName);
-    return res.json({ url: cloudflareUrl, message: 'Uploaded and deleted from Cloudflare' });
+    // await deleteFile(fileName);
+    return res.json({ url: cloudflareUrl, message: 'Uploaded from Cloudflare' });
   } catch (err) {
     // Clean up local file if error
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

@@ -232,14 +232,12 @@ exports.updateLead = async (req, res) => {
           }
           // Pass the URL directly to speechToTextAndRate
           const result = await speechToTextAndRate(callRecording);
-          console.log("Speech-to-text result:", result);
           // Update the lead with transcription and rating
           await Lead.findByIdAndUpdate(
             lead._id,
             {
               callRecordingText: result.text,
-              callRecordingRating: result.rating,
-              callRecordingRubric: result.rubricBreakdown,
+              call_performance: result.rating,
             },
             { new: false }
           );

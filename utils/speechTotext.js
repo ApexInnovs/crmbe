@@ -31,13 +31,10 @@ async function speechToTextAndRate(file) {
 		if (file.startsWith('http://') || file.startsWith('https://')) {
 			// Get signed URL from backend, then stream audio
 			const axios = require('axios');
-			const backendBase = process.env.BACKEND_BASE_URL || 'http://localhost:3000'; // Set your backend base URL
-			const fileName = file.split('/').pop();
-			// Get signed URL from backend
 			// Stream audio from signed URL
 			const response = await axios({
 				method: 'get',
-				url: fileName,
+				url: file,
 				responseType: 'stream',
 			});
 			audioStream = response.data;
@@ -49,13 +46,14 @@ async function speechToTextAndRate(file) {
 		audioStream = file;
 	}
 	try {
+		console.log("hii")
 		// Use only the minimal mode for token efficiency
 		const response = await client.speechToText.transcribe({
 			file: audioStream,
 			model: 'saaras:v3',
 			mode: 'transcribe', // minimal, no translation or extra output
 		});
-		const text = response?.output || '';
+		const text = response?.transcript || '';
 		// Evaluate text against rubric (all local, no extra API calls)
 		let score = 0;
 		const breakdown = {};
@@ -66,7 +64,7 @@ async function speechToTextAndRate(file) {
 		}
 		// Clamp score to 1-10 (never 0 for a real call)
 		const rating = Math.max(1, Math.min(10, score));
-		return { text, rating, rubricBreakdown: breakdown };
+		return { text, rating};
 	} catch (err) {
 		logger.error('Speech-to-text or rating failed: ' + err.message);
 		throw err;

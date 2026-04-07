@@ -24,9 +24,8 @@ async function uploadFile(fileBuffer, fileName, mimeType) {
 		ContentType: mimeType,
 		ACL: 'public-read',
 	};
-	console.log('Uploading file to Cloudflare R2 with params: ', params);
 	const data = await s3.upload(params).promise();
-	console.log(' the data is ',data)
+	console.log('File uploaded to Cloudflare R2:', data);
 	return data.Location;
 }
 
