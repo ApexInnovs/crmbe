@@ -25,8 +25,13 @@ async function uploadFile(fileBuffer, fileName, mimeType) {
 		ACL: 'public-read',
 	};
 	const data = await s3.upload(params).promise();
-	console.log('File uploaded to Cloudflare R2:', data);
-	return data.Location;
+	// Construct public URL
+	const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL_BASE;
+	if (!publicUrlBase) {
+		throw new Error('CLOUDFLARE_R2_PUBLIC_URL_BASE is not set in environment variables');
+	}
+	const publicUrl = `${publicUrlBase}/${data?.key}`;
+	return publicUrl;
 }
 
 // Delete file from Cloudflare R2
