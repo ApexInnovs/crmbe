@@ -81,6 +81,17 @@ const upload = multer({ dest: "uploads/" });
  *         schema:
  *           type: string
  *         description: Campaign ID
+ *       - in: query
+ *         name: contacted
+ *         schema:
+ *           type: string
+ *           enum: [all, contacted, nocontacted]
+ *           default: all
+ *         description: >-
+ *           Filter by contacted status:
+ *           - 'contacted': status is not 'created' (contacted)
+ *           - 'nocontacted': status is 'created' (not contacted)
+ *           - 'all': no filter (default)
  *     responses:
  *       200:
  *         description: List of leads

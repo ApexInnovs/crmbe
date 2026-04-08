@@ -63,6 +63,7 @@ exports.getLeads = async (req, res) => {
       status,
       company,
       campigne,
+      contacted = "all"
     } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
@@ -70,6 +71,12 @@ exports.getLeads = async (req, res) => {
     if (company) query.company = company;
     if (campigne) query.campigne = campigne;
     if (status && validStatuses.includes(status)) query.status = status;
+    // Contacted filter
+    if (contacted === "contacted") {
+      query.status = { $ne: "created" };
+    } else if (contacted === "nocontacted") {
+      query.status = "created";
+    }
     if (search) {
       query.$or = [
         { "leadData.name": { $regex: search, $options: "i" } },
