@@ -370,7 +370,7 @@ exports.importLeads = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { campaignId, leads, company, createdBy } = req.body;
+    const { campaignId, campignName, description, leads, company, createdBy } = req.body;
 
     // Validate required fields
     if (!company || !mongoose.Types.ObjectId.isValid(company)) {
@@ -396,9 +396,32 @@ exports.importLeads = async (req, res) => {
     if (leads.length > 5000) {
       await session.abortTransaction();
       session.endSession();
-      return res
-        .status(400)
-        .json({ message: "Maximum 5000 leads per import." });
+      return res.status(400).json({ message: "Maximum 5000 leads per import." });
+    }
+
+    // Campaign handling
+    let resolvedCampaignId = campaignId;
+    if (!campaignId) {
+      // Require campignName and description
+      if (!campignName || !description) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: "campignName and description required if campaignId not provided." });
+      }
+      // Create new campaign
+      const Campigne = require("../model/campigne.model");
+      const newCamp = await Campigne.create([
+        {
+          title: campignName,
+          description,
+          company,
+          createdBy: createdBy || null,
+          status: 2, // started
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      ], { session });
+      resolvedCampaignId = newCamp[0]._id;
     }
 
     const failedRows = [];
@@ -429,7 +452,7 @@ exports.importLeads = async (req, res) => {
         }
 
         const lead = new Lead({
-          campigne: campaignId || null,
+          campigne: resolvedCampaignId,
           leadData,
           company,
           createdBy: createdBy || null,

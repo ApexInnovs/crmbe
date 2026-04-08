@@ -295,6 +295,67 @@ exports.getCompanyDashboard = async (req, res) => {
       { $project: { _id: 0, campigne: 1, conversions: 1 } },
     ]);
 
+    // Employee Conversion Graph: conversions per employee over time
+    let employeeConversionGraph = await Lead.aggregate([
+      {
+        $match: {
+          company: new mongoose.Types.ObjectId(companyId),
+          status: { $in: ["intrested", "coustomer"] },
+          ...dateFilter,
+          ...campigneFilter,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            employee: "$assignedTo",
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.employee",
+          conversions: {
+            $push: { date: "$_id.date", count: "$count" },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "employees",
+          localField: "_id",
+          foreignField: "_id",
+          as: "employee",
+        },
+      },
+      { $unwind: "$employee" },
+      {
+        $project: {
+          _id: 0,
+          employee: 1,
+          conversions: 1,
+        },
+      },
+    ]);
+
+    // Optionally fill missing dates for each employee (if startDate & endDate provided)
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      employeeConversionGraph = employeeConversionGraph.map(emp => {
+        const dateMap = {};
+        emp.conversions.forEach(item => { dateMap[item.date] = item.count; });
+        const filled = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().slice(0, 10);
+          filled.push({ date: dateStr, count: dateMap[dateStr] || 0 });
+        }
+        return { ...emp, conversions: filled };
+      });
+    }
+
     // Response
     res.json({
       cardData: {
@@ -317,6 +378,7 @@ exports.getCompanyDashboard = async (req, res) => {
         conversionGraph,
       },
       employeePerformance,
+      employeeConversionGraph,
     });
   } catch (err) {
     console.error(err);

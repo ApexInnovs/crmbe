@@ -318,6 +318,53 @@ router.post(
 );
 
 // Import leads from JSON (parsed on frontend)
+
+/**
+ * @swagger
+ * /leads/import:
+ *   post:
+ *     summary: Import leads from JSON (with optional campaign creation)
+ *     tags: [Lead]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - leads
+ *               - company
+ *             properties:
+ *               campaignId:
+ *                 type: string
+ *                 description: Existing campaign ID (optional, if not provided, a new campaign will be created)
+ *               campignName:
+ *                 type: string
+ *                 description: Name for new campaign (required if campaignId not provided)
+ *               description:
+ *                 type: string
+ *                 description: Description for new campaign (required if campaignId not provided)
+ *               company:
+ *                 type: string
+ *                 description: Company ID
+ *               createdBy:
+ *                 type: string
+ *                 description: Employee ID (creator)
+ *               leads:
+ *                 type: array
+ *                 description: Array of lead data objects
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       201:
+ *         description: All leads imported successfully.
+ *       207:
+ *         description: Some leads imported, some failed.
+ *       400:
+ *         description: Validation error or no leads imported.
+ *       500:
+ *         description: Server error.
+ */
 router.post("/leads/import", leadController.importLeads);
 
 module.exports = router;
