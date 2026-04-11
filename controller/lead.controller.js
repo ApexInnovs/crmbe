@@ -63,7 +63,8 @@ exports.getLeads = async (req, res) => {
       status,
       company,
       campigne,
-      contacted = "all"
+      contacted = "all",
+      assignedTo,
     } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
@@ -74,16 +75,17 @@ exports.getLeads = async (req, res) => {
     // Contacted filter
     if (contacted === "contacted") {
       query.status = { $ne: "created" };
-    } else if (contacted === "nocontacted") {
+    } else if (contacted === "not_contacted") {
       query.status = "created";
     }
     if (search) {
       query.$or = [
         { "leadData.name": { $regex: search, $options: "i" } },
-        { "leadData.email": { $regex: search, $options: "i" } },
-        { "leadData.phone": { $regex: search, $options: "i" } },
-        { status: { $regex: search, $options: "i" } },
+        { "leadData.phone": { $regex: search, $options: "i" } }
       ];
+    }
+    if(assignedTo){
+      query.assignedTo = assignedTo;
     }
     const total = await Lead.countDocuments(query);
     const leads = await Lead.find(query)
