@@ -4,16 +4,15 @@ const mongoose = require("mongoose");
 // Create client
 exports.createClient = async (req, res) => {
   try {
-    const { lead_id, company, managedBy, projects, notes, status } = req.body;
-    if (!lead_id || !mongoose.Types.ObjectId.isValid(lead_id)) {
-      return res.status(400).json({ message: "Valid lead_id is required." });
-    }
+    const { lead_id, company, managedBy, projects, notes, status, name, phone } = req.body;
     if (!company || !mongoose.Types.ObjectId.isValid(company)) {
       return res.status(400).json({ message: "Valid company ID is required." });
     }
     // managedBy is now a string, no ObjectId validation
     const client = new Client({
       lead_id,
+      name: name || "",
+      phone: phone || "",
       company,
       managedBy: managedBy || "",
       projects: Array.isArray(projects) ? projects : [],
@@ -38,7 +37,7 @@ exports.getClients = async (req, res) => {
       company,
       managedBy,
       campaign,
-      leadName
+      name
     } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
@@ -51,6 +50,7 @@ exports.getClients = async (req, res) => {
           deleted: { $ne: true },
           ...(company ? { company: mongoose.Types.ObjectId.isValid(company) ? new mongoose.Types.ObjectId(company) : company } : {}),
           ...(managedBy ? { managedBy } : {}),
+          ...(name? { name: { $regex: name, $options: "i" } } : {}),
           ...(typeof status !== "undefined" ? { status: Number(status) } : {}),
         }
       },
@@ -63,7 +63,7 @@ exports.getClients = async (req, res) => {
           as: "lead_info"
         }
       },
-      { $unwind: "$lead_info" },
+      { $unwind: { path: "$lead_info", preserveNullAndEmptyArrays: true } },
       // Filter by campaign (if provided)
       ...(campaign ? [{
         $match: {
@@ -71,14 +71,6 @@ exports.getClients = async (req, res) => {
         }
       }] : []),
       // Filter by leadName (if provided)
-      ...(leadName ? [{
-        $match: {
-          $or: [
-            { "lead_info.leadData.name": { $regex: leadName, $options: "i" } },
-            { "lead_info.leadData.email": { $regex: leadName, $options: "i" } }
-          ]
-        }
-      }] : []),
       // Join with Campaign for population
       {
         $lookup: {
@@ -112,10 +104,13 @@ exports.getClients = async (req, res) => {
             leadData: "$lead_info.leadData",
             nextMeetingDate: "$lead_info.nextMeetingDate"
           },
+          name: 1,
+          phone: 1,
           company: "$company_info",
           managedBy: 1,
           status: 1,
           notes: 1,
+          projects: 1,
           createdAt: 1,
           updatedAt: 1
         }
@@ -161,6 +156,7 @@ exports.getClientById = async (req, res) => {
     })
       .populate("lead_id company") // managedBy is now a string, do not populate
       .lean();
+    // Ensure name and phone are present in the response
     if (!client) return res.status(404).json({ message: "Client not found" });
     res.json(client);
   } catch (error) {
@@ -174,12 +170,14 @@ exports.updateClient = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid client ID" });
     }
-    const { projects, notes, status, managedBy } = req.body;
+    const { projects, notes, status, managedBy, name, phone } = req.body;
     const updateData = { updatedAt: new Date() };
     if (projects) updateData.projects = projects;
     if (notes) updateData.notes = notes;
     if (typeof status !== "undefined") updateData.status = Number(status);
     if (typeof managedBy !== "undefined") updateData.managedBy = managedBy;
+    if (typeof name !== "undefined") updateData.name = name;
+    if (typeof phone !== "undefined") updateData.phone = phone;
     const client = await Client.findOneAndUpdate(
       { _id: req.params.id, deleted: { $ne: true } },
       updateData,

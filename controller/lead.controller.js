@@ -203,10 +203,8 @@ exports.updateLead = async (req, res) => {
           company: lead.company,
           lead_id: lead._id,
           managedBy: assignedToName,
-          notes:
-            Array.isArray(lead.notes) && lead.notes.length > 0
-              ? lead.notes.map((n) => n.text).join("\n")
-              : "",
+          name: lead?.leadData?.name || "",
+          phone: lead?.leadData?.phone || "",
           status: 1,
           projects: [],
           createdAt: new Date(),

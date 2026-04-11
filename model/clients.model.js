@@ -30,7 +30,13 @@ const ClientSchema = new mongoose.Schema({
 	lead_id: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'Lead',
-		required: true,
+		// required: true,
+	},
+	name:{
+		type: String,
+	},
+	phone:{
+		type: String,
 	},
 	company: {
 		type: mongoose.Schema.Types.ObjectId,

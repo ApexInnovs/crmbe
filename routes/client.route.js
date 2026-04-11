@@ -28,6 +28,12 @@ const clientController = require('../controller/client.controller');
  *               lead_id:
  *                 type: string
  *                 description: Lead ID
+ *               name:
+ *                 type: string
+ *                 description: Client name
+ *               phone:
+ *                 type: string
+ *                 description: Client phone number
  *               company:
  *                 type: string
  *                 description: Company ID
@@ -135,6 +141,10 @@ const clientController = require('../controller/client.controller');
  *                           nextMeetingDate:
  *                             type: string
  *                             format: date-time
+ *                       name:
+ *                         type: string
+ *                       phone:
+ *                         type: string
  *                       company:
  *                         type: object
  *                       managedBy:
@@ -196,6 +206,12 @@ router.get('/clients', clientController.getClients);
  *           schema:
  *             type: object
  *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Client name
+ *               phone:
+ *                 type: string
+ *                 description: Client phone number
  *               projects:
  *                 type: array
  *                 items:
