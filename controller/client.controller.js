@@ -65,11 +65,22 @@ exports.getClients = async (req, res) => {
       },
       { $unwind: { path: "$lead_info", preserveNullAndEmptyArrays: true } },
       // Filter by campaign (if provided)
-      ...(campaign ? [{
-        $match: {
-          "lead_info.campigne": mongoose.Types.ObjectId.isValid(campaign) ? new mongoose.Types.ObjectId(campaign) : campaign
+...(campaign ? [{
+  $match: (
+    campaign === 'offline'
+      ? {
+          $or: [
+            { lead_id: { $exists: false } },
+            { lead_id: null }
+          ]
         }
-      }] : []),
+      : {
+          "lead_info.campigne": mongoose.Types.ObjectId.isValid(campaign)
+            ? new mongoose.Types.ObjectId(campaign)
+            : campaign
+        }
+  )
+}] : []),
       // Filter by leadName (if provided)
       // Join with Campaign for population
       {
