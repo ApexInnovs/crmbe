@@ -1,3 +1,5 @@
+// Start cron jobs
+require('./cron/autoapi');
 
 require('dotenv').config();
 const express = require('express');
