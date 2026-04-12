@@ -8,6 +8,7 @@ const parse = require("csv-parse/sync").parse;
 const XLSX = require("xlsx");
 const { consumeCompanyCredits } = require("../utils/conumeToken");
 const { speechToTextAndRate } = require("../utils/speechTotext");
+const employeeModel = require("../model/employee.model");
 
 // Helper: Validate lead status
 const validStatuses = [
@@ -38,6 +39,26 @@ exports.createLead = async (req, res) => {
     if (status && !validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid lead status." });
     }
+    // Auto-assign employee logic
+    let assignedTo = null;
+    const employees = await employeeModel.find({
+      company,
+      status: 1
+    }).select("_id");
+    console.log("Active employees for company:", employees);
+    if (employees.length === 1) {
+      assignedTo = employees[0]._id;
+    } else if (employees.length > 1 && campigne) {
+      // Find employee with fewest leads for this campaign
+      const counts = await Promise.all(
+        employees.map(async (emp) => {
+          const count = await Lead.countDocuments({ campigne, assignedTo: emp._id });
+          return { empId: emp._id, count };
+        })
+      );
+      counts.sort((a, b) => a.count - b.count);
+      assignedTo = counts[0].empId;
+    }
     const lead = new Lead({
       campigne: campigne || null,
       leadData: leadData || {},
@@ -45,6 +66,7 @@ exports.createLead = async (req, res) => {
       createdBy,
       status: status || "created",
       deleted: false,
+      ...(assignedTo ? { assignedTo } : {})
     });
     await lead.save();
     res.status(201).json(lead);
@@ -431,6 +453,12 @@ exports.importLeads = async (req, res) => {
       resolvedCampaignId = newCamp[0]._id;
     }
 
+    // Fetch all active employees for the company
+    const employees = await employeeModel.find({
+      company,
+      status: 1
+    }).select("_id");
+
     const failedRows = [];
     const insertedLeads = [];
 
@@ -458,6 +486,14 @@ exports.importLeads = async (req, res) => {
           }
         }
 
+        // Assign employee: if only one, assign all to them; if multiple, round-robin
+        let assignedTo = null;
+        if (employees.length === 1) {
+          assignedTo = employees[0]._id;
+        } else if (employees.length > 1) {
+          assignedTo = employees[i % employees.length]._id;
+        }
+
         const lead = new Lead({
           campigne: resolvedCampaignId,
           leadData,
@@ -465,6 +501,7 @@ exports.importLeads = async (req, res) => {
           createdBy: createdBy || null,
           status: "created",
           deleted: false,
+          ...(assignedTo ? { assignedTo } : {})
         });
         await lead.save({ session });
         insertedLeads.push(lead);
