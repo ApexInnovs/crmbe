@@ -284,7 +284,7 @@ exports.login = async (req, res) => {
       userType: "employee",
     });
     if(token){
-      await Employee.findByIdAndUpdate(employee._id, { jwtToken: token });
+      await Employee.findByIdAndUpdate(employee._id, { jwtToken: token,employee });
     }
     res.json({ token, employee });
   } catch (error) {
