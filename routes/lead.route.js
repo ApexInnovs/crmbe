@@ -92,6 +92,11 @@ const upload = multer({ dest: "uploads/" });
  *           - 'contacted': status is not 'created' (contacted)
  *           - 'nocontacted': status is 'created' (not contacted)
  *           - 'all': no filter (default)
+ *       - in: query
+ *         name: assignedTo
+ *         schema:
+ *           type: string
+ *         description: Employee ID (assigned to)
  *     responses:
  *       200:
  *         description: List of leads
