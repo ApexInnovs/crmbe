@@ -14,13 +14,26 @@ exports.getCompanyDashboard = async (req, res) => {
 
     // Date range filter (default to this month)
     let dateFilter = {};
-    let start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    let end = endDate ? new Date(endDate) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
+    let start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    let end = endDate
+      ? new Date(endDate)
+      : new Date(
+          new Date().getFullYear(),
+          new Date().getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
     dateFilter.createdAt = { $gte: start, $lte: end };
 
     // Campaign filter
     let campigneFilter = {};
-    if (campigneId) campigneFilter.campigne = new mongoose.Types.ObjectId(campigneId);
+    if (campigneId)
+      campigneFilter.campigne = new mongoose.Types.ObjectId(campigneId);
 
     // Card Data
     const [
@@ -44,7 +57,7 @@ exports.getCompanyDashboard = async (req, res) => {
       }),
       Lead.countDocuments({
         company: companyId,
-        status: { $in: ["intrested", "coustomer"] },
+        status: { $in: ["intrested", "customer"] },
         ...dateFilter,
         ...campigneFilter,
       }),
@@ -83,7 +96,7 @@ exports.getCompanyDashboard = async (req, res) => {
       }),
       Lead.countDocuments({
         company: companyId,
-        status: "coustomer",
+        status: "customer",
         ...dateFilter,
         ...campigneFilter,
       }),
@@ -201,7 +214,7 @@ exports.getCompanyDashboard = async (req, res) => {
       {
         $match: {
           company: new mongoose.Types.ObjectId(companyId),
-          status: { $in: ["intrested", "coustomer"] },
+          status: { $in: ["intrested", "customer"] },
           ...dateFilter,
           ...campigneFilter,
         },
@@ -220,7 +233,9 @@ exports.getCompanyDashboard = async (req, res) => {
       const start = new Date(startDate);
       const end = new Date(endDate);
       const dateMap = {};
-      conversionGraph.forEach(item => { dateMap[item._id] = item.count; });
+      conversionGraph.forEach((item) => {
+        dateMap[item._id] = item.count;
+      });
       const filledGraph = [];
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().slice(0, 10);
@@ -244,7 +259,7 @@ exports.getCompanyDashboard = async (req, res) => {
           totalLeads: { $sum: 1 },
           conversions: {
             $sum: {
-              $cond: [{ $in: ["$status", ["intrested", "coustomer"]] }, 1, 0],
+              $cond: [{ $in: ["$status", ["intrested", "customer"]] }, 1, 0],
             },
           },
           aiReviews: { $push: "$ai_review" },
@@ -277,7 +292,7 @@ exports.getCompanyDashboard = async (req, res) => {
       {
         $match: {
           company: new mongoose.Types.ObjectId(companyId),
-          status: { $in: ["intrested", "coustomer"] },
+          status: { $in: ["intrested", "customer"] },
         },
       },
       { $group: { _id: "$campigne", conversions: { $sum: 1 } } },
@@ -300,7 +315,7 @@ exports.getCompanyDashboard = async (req, res) => {
       {
         $match: {
           company: new mongoose.Types.ObjectId(companyId),
-          status: { $in: ["intrested", "coustomer"] },
+          status: { $in: ["intrested", "customer"] },
           ...dateFilter,
           ...campigneFilter,
         },
@@ -344,9 +359,11 @@ exports.getCompanyDashboard = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      employeeConversionGraph = employeeConversionGraph.map(emp => {
+      employeeConversionGraph = employeeConversionGraph.map((emp) => {
         const dateMap = {};
-        emp.conversions.forEach(item => { dateMap[item.date] = item.count; });
+        emp.conversions.forEach((item) => {
+          dateMap[item.date] = item.count;
+        });
         const filled = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = d.toISOString().slice(0, 10);
@@ -368,9 +385,9 @@ exports.getCompanyDashboard = async (req, res) => {
         lostLeads: lostLeads,
         created: createdLeads,
         not_responsed: notResponsedLeads,
-		not_intrested: notIntrestedLeads,
-		intrested_but_later: intrestedButLaterLeads,
-		intrested: intrestedLeads,
+        not_intrested: notIntrestedLeads,
+        intrested_but_later: intrestedButLaterLeads,
+        intrested: intrestedLeads,
       },
       // Optionally keep graphData and employeePerformance if needed elsewhere in the frontend
       graphData: {
