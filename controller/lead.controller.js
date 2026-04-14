@@ -17,7 +17,7 @@ const validStatuses = [
   "not_intrested",
   "intrested_but_later",
   "intrested",
-  "coustomer",
+  "customer",
   "lost",
 ];
 
@@ -212,8 +212,8 @@ exports.updateLead = async (req, res) => {
       session.endSession();
       return res.status(404).json({ message: "Lead not found" });
     }
-    // If status changes to 'coustomer', create client
-    if (status && status === "coustomer") {
+    // If status changes to 'customer', create client
+    if (status && status === "customer") {
       try {
         // Populate assignedTo to get the name
         let assignedToName = "";
@@ -362,22 +362,30 @@ exports.assignLeadsToEmployee = async (req, res) => {
 // Get leads by campaign and employee (with pagination)
 exports.getLeadsByCampaignAndEmployee = async (req, res) => {
   try {
-    let { campigne, employeeId, page = 1, limit = 10 } = req.query;
+    let { campigne, assignedTo, status, page = 1, limit = 10 } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
-    if (!campigne || !employeeId) {
-      return res
-        .status(400)
-        .json({ message: "campigne and employeeId required." });
+    const query = { deleted: { $ne: true } };
+    // Only add campigne if provided
+    if (campigne) query.campigne = campigne;
+    // assignedTo: from query or fallback to req.params.user
+    if (assignedTo) {
+      query.assignedTo = assignedTo;
+    } else if (req.params && req.params.user) {
+      query.assignedTo = req.params.user;
     }
-    const query = {
-      campigne,
-      assignedTo: employeeId,
-      deleted: { $ne: true },
-    };
+    // status logic
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = { $ne: "customer" };
+    }
     const total = await Lead.countDocuments(query);
     const leads = await Lead.find(query)
-      .populate("campigne company createdBy assignedTo")
+      .populate({ path: "campigne", select: "title status" })
+      .populate({ path: "company", select: "name status" })
+      .populate({ path: "createdBy", select: "name status" })
+      .populate({ path: "assignedTo", select: "name status" })
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 })

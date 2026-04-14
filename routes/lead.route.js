@@ -40,7 +40,7 @@ const upload = multer({ dest: "uploads/" });
  *                 description: Employee ID
  *               status:
  *                 type: string
- *                 enum: [created, not_responsed, not_intrested, intrested_but_later, intrested, coustomer, lost]
+ *                 enum: [created, not_responsed, not_intrested, intrested_but_later, intrested, customer, lost]
  *                 description: Lead status
  *     responses:
  *       201:
@@ -156,7 +156,7 @@ router.get("/leads", leadController.getLeads);
  *                       format: date-time
  *               status:
  *                 type: string
- *                 enum: [created, not_responsed, not_intrested, intrested_but_later, intrested, coustomer, lost]
+ *                 enum: [created, not_responsed, not_intrested, intrested_but_later, intrested, customer, lost]
  *               callRecording:
  *                 type: string
  *               callRecordingText:
@@ -269,14 +269,20 @@ router.post("/assign/to-employee", leadController.assignLeadsToEmployee);
  *         name: campigne
  *         schema:
  *           type: string
- *         required: true
- *         description: Campaign ID
+ *         required: false
+ *         description: Campaign ID (optional)
  *       - in: query
- *         name: employeeId
+ *         name: assignedTo
  *         schema:
  *           type: string
  *         required: true
- *         description: Employee ID
+ *         description: Employee ID (assigned to)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Lead status (optional)
  *       - in: query
  *         name: page
  *         schema:
@@ -290,6 +296,23 @@ router.post("/assign/to-employee", leadController.assignLeadsToEmployee);
  *     responses:
  *       200:
  *         description: List of leads by campaign and employee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Lead'
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 total:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
  *       400:
  *         description: Validation error.
  */

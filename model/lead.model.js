@@ -37,12 +37,12 @@ const LeadSchema = new mongoose.Schema(
         "not_intrested",
         "intrested_but_later",
         "intrested",
-        "coustomer",
+        "customer",
         "lost",
       ],
       default: "created",
       description:
-        "Current status of the lead. Can be marked as created, not_responsed, not_intrested, intrested_but_later, intrested, coustomer, lost.",
+        "Current status of the lead. Can be marked as created, not_responsed, not_intrested, intrested_but_later, intrested, customer, lost.",
     },
     callRecording: {
       type: String,
