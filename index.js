@@ -38,7 +38,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Register all routes
 const allRoutes = require('./routes/all.route');
-app.use('/api', allRoutes);
+const authMiddleware = require('./middleware/permission.middleware');
+app.use('/api', authMiddleware(), allRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

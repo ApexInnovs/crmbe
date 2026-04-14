@@ -7,6 +7,19 @@
   // allowedEntities: string or array of strings (e.g., 'admin', ['admin', 'employee'])
   module.exports = function (requiredPermission, allowedEntities) {
     return async function (req, res, next) {
+      // Allow login routes to bypass permission and token checks
+      const loginRoutes = [
+        '/admin/login',
+        '/company/login',
+        '/employees/login',
+      ];
+      // Check for POST method and login route
+      if (
+        req.method === 'POST' &&
+        loginRoutes.some((route) => req.path === route || req.originalUrl.endsWith(route))
+      ) {
+        return next();
+      }
       try {
         // Get token from Authorization header
         const authHeader = req.headers["authorization"];
