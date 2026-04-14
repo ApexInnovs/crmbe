@@ -57,7 +57,7 @@ exports.getCompanyDashboard = async (req, res) => {
       }),
       Lead.countDocuments({
         company: companyId,
-        status: { $in: ["intrested", "customer"] },
+        status: { $eq: "customer" },
         ...dateFilter,
         ...campigneFilter,
       }),
