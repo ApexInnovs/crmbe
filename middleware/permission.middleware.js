@@ -1,5 +1,6 @@
  const Admin = require("../model/admin.model");
   const Company = require("../model/Company.model");
+const employeeModel = require("../model/employee.model");
   const { verifyToken } = require("../utils/token");
 
   // Middleware to validate permissions and entity type
@@ -66,7 +67,7 @@
           req.user = user;
           return next();
         } else if (userType === "employee") {
-          user = await Employee.findById(decoded.id).populate({
+          user = await employeeModel.findById(decoded.id).populate({
             path: "role",
             populate: { path: "permissions" },
           });
