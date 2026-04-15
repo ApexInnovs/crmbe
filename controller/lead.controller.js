@@ -383,7 +383,7 @@ exports.getLeadsByCampaignAndEmployee = async (req, res) => {
     const total = await Lead.countDocuments(query);
     const leads = await Lead.find(query)
       .populate({ path: "campigne", select: "title status" })
-      .populate({ path: "company", select: "name status" })
+      .populate({ path: "company", select: "name status creditsLeft" })
       .populate({ path: "createdBy", select: "name status" })
       .populate({ path: "assignedTo", select: "name status" })
       .skip((page - 1) * limit)
