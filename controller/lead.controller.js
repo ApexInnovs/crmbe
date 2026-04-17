@@ -265,8 +265,9 @@ exports.updateLead = async (req, res) => {
           await Lead.findByIdAndUpdate(
             lead._id,
             {
-              callRecordingText: result.text,
-              call_performance: result.rating,
+              callRecordingText: result?.text,
+              call_performance: result?.rating,
+              ai_review:result?.rubricBreakdown
             },
             { new: false }
           );

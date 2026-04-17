@@ -87,7 +87,7 @@ const LeadSchema = new mongoose.Schema(
     },
     // AI review and call performance analytics
     ai_review: {
-      type: String,
+      type: [String],
       default: null,
       description: "AI-generated review or feedback for this lead/call.",
     },
