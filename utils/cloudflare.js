@@ -14,7 +14,7 @@ const BUCKET = process.env.CLOUDFLARE_R2_BUCKET;
 // Upload file (image or audio)
 async function uploadFile(fileBuffer, fileName, mimeType) {
 	const ext = path.extname(fileName).toLowerCase();
-	if (!['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.m4a'].includes(ext)) {
+	if (!['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.m4a','.aac'].includes(ext)) {
 		throw new Error('Unsupported file type');
 	}
 	const params = {
