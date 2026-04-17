@@ -262,12 +262,22 @@ exports.updateLead = async (req, res) => {
           // Pass the URL directly to speechToTextAndRate
           const result = await speechToTextAndRate(callRecording);
           // Update the lead with transcription and rating
+          // Ensure ai_review is always an array, not a string
+          let ai_review = result?.rubricBreakdown;
+          if (typeof ai_review === 'string') {
+            try {
+              ai_review = JSON.parse(ai_review);
+            } catch (e) {
+              require("../utils/logger").error("Failed to parse ai_review: " + e.message);
+              ai_review = [];
+            }
+          }
           await Lead.findByIdAndUpdate(
             lead._id,
             {
               callRecordingText: result?.text,
               call_performance: result?.rating,
-              ai_review:result?.rubricBreakdown
+              ai_review
             },
             { new: false }
           );
