@@ -3,6 +3,8 @@
 const { SarvamAIClient } = require('sarvamai');
 const fs = require('fs');
 const logger = require('./logger');
+const ffmpeg = require('fluent-ffmpeg');
+const ffprobe = require('ffprobe-static');
 
 const client = new SarvamAIClient({
 	apiSubscriptionKey: process.env.SARVAM_API_KEY
@@ -32,34 +34,147 @@ const rubric = [
  * @param {string|Buffer|fs.ReadStream} file - Path or stream of the audio file.
  * @returns {Promise<{ text: string, rating: number, rubricBreakdown: object }>} 
  */
+
+async function getAudioDuration(filePath) {
+	return new Promise((resolve, reject) => {
+		ffmpeg.setFfprobePath(ffprobe.path);
+		ffmpeg.ffprobe(filePath, (err, metadata) => {
+			if (err) return reject(err);
+			resolve(metadata.format.duration || 0);
+		});
+	});
+}
+
 async function speechToTextAndRate(file) {
-	let audioStream;
+	const os = require('os');
+	const path = require('path');
+	let filePath = file;
+	let isUrl = false;
+	let tempFilePath = null;
 	if (typeof file === 'string') {
 		if (file.startsWith('http://') || file.startsWith('https://')) {
-			// Get signed URL from backend, then stream audio
-			const axios = require('axios');
-			// Stream audio from signed URL
-			const response = await axios({
-				method: 'get',
-				url: file,
-				responseType: 'stream',
-			});
-			audioStream = response.data;
-		} else {
-			// Local file path
-			audioStream = fs.createReadStream(file);
+			isUrl = true;
+		}
+	}
+
+	let duration = 0;
+	if (!isUrl) {
+		// Local file: check duration
+		try {
+			duration = await getAudioDuration(filePath);
+		} catch (e) {
+			logger.error('Failed to get audio duration: ' + e.message);
 		}
 	} else {
-		audioStream = file;
+		// For URLs, assume long audio (or always use batch for URLs)
+		duration = 31; // force batch for URLs
 	}
+
+	let text = '';
 	try {
-		// Use only the minimal mode for token efficiency
-		const response = await client.speechToText.transcribe({
-			file: audioStream,
-			model: 'saaras:v3',
-			mode: 'transcribe', // minimal, no translation or extra output
-		});
-		const text = response?.transcript || '';
+		if (duration > 30) {
+			// Use Batch API
+			if (isUrl) {
+				// Download remote file to temp file
+				const axios = require('axios');
+				const tmpDir = os.tmpdir();
+				const ext = path.extname(filePath) || '.audio';
+				tempFilePath = path.join(tmpDir, 'sarvam_' + Date.now() + ext);
+				const writer = fs.createWriteStream(tempFilePath);
+				const response = await axios({
+					method: 'get',
+					url: filePath,
+					responseType: 'stream',
+				});
+				await new Promise((resolve, reject) => {
+					response.data.pipe(writer);
+					writer.on('finish', resolve);
+					writer.on('error', reject);
+				});
+				filePath = tempFilePath;
+			}
+			const job = await client.speechToTextJob.createJob({
+				model: 'saaras:v3',
+				mode: 'transcribe'
+			});
+			await job.uploadFiles([filePath]);
+			await job.start();
+			await job.waitUntilComplete();
+			const fileResults = await job.getFileResults();
+			console.log("the file results are ",fileResults);
+			if (fileResults.successful && fileResults.successful.length > 0) {
+				// Download output to uploads directory
+				const uploadsDir = path.resolve(__dirname, '../uploads');
+				if (!fs.existsSync(uploadsDir)) {
+					fs.mkdirSync(uploadsDir, { recursive: true });
+				}
+				await job.downloadOutputs(uploadsDir);
+				// Find the correct .json file in uploadsDir
+				let foundFile = null;
+				const fileName = fileResults.successful[0].file_name;
+				// Look for a .json file that starts with the audio file name (without extension)
+				const baseName = path.parse(fileName).name;
+				const files = fs.readdirSync(uploadsDir);
+				for (const f of files) {
+					if (f.startsWith(baseName) && f.endsWith('.json')) {
+						foundFile = path.join(uploadsDir, f);
+						break;
+					}
+				}
+				if (foundFile && fs.existsSync(foundFile)) {
+					try {
+						const fileContent = fs.readFileSync(foundFile, 'utf-8');
+						let outputData = {};
+						try {
+							outputData = JSON.parse(fileContent);
+						} catch (jsonErr) {
+							logger.error('Failed to parse batch output file as JSON: ' + jsonErr.message);
+						}
+						if (outputData && typeof outputData.transcript === 'string') {
+							text = outputData.transcript;
+						} else {
+							logger.error('Transcript not found in batch output file.');
+							text = '';
+						}
+						// Clean up the output file after reading
+						try { fs.unlinkSync(foundFile); } catch (e) { /* ignore */ }
+					} catch (e) {
+						logger.error('Failed to read/parse batch output file: ' + e.message);
+						text = '';
+					}
+				} else {
+					logger.error('Batch output file not found in uploads: ' + (foundFile || 'unknown'));
+					text = '';
+				}
+			} else {
+				throw new Error('Batch transcription failed: ' + (fileResults.failed?.[0]?.error_message || 'Unknown error'));
+			}
+			// Clean up temp file if used
+			if (tempFilePath) {
+				try { fs.unlinkSync(tempFilePath); } catch (e) { /* ignore */ }
+			}
+		} else {
+			// Use standard API
+			let audioStream;
+			if (isUrl) {
+				const axios = require('axios');
+				const response = await axios({
+					method: 'get',
+					url: filePath,
+					responseType: 'stream',
+				});
+				audioStream = response.data;
+			} else {
+				audioStream = fs.createReadStream(filePath);
+			}
+			const response = await client.speechToText.transcribe({
+				file: audioStream,
+				model: 'saaras:v3',
+				mode: 'transcribe',
+			});
+			console.log("the servam response is ",response);
+			text = response?.transcript || '';
+		}
 
 		// Evaluate text against rubric (all local, no extra API calls)
 		let score = 0;
@@ -70,10 +185,10 @@ async function speechToTextAndRate(file) {
 			if (matched) score += item.points;
 			rubricBreakdown.push({ label: item.label, matched, points });
 		}
-
+console.log("the text is ",text);
 		// Clamp score to 1-10 (never 0 for a real call)
 		const rating = Math.max(1, Math.min(10, score));
-		return { text, rating,rubricBreakdown};
+		return { text, rating, rubricBreakdown };
 	} catch (err) {
 		logger.error('Speech-to-text or rating failed: ' + err.message);
 		throw err;
