@@ -76,7 +76,7 @@ const CampigneSchema = new mongoose.Schema({
   },
   status: {
     type: Number,
-    default: 1, //1-active 2-started 3-completed 4-cancelled
+    default: 1, //1-pending 2-started 3-completed 4-cancelled
   },
   deleted: {
     type: Boolean,

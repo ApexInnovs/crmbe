@@ -101,7 +101,6 @@ async function speechToTextAndRate(file) {
 			await job.start();
 			await job.waitUntilComplete();
 			const fileResults = await job.getFileResults();
-			console.log("the file results are ",fileResults);
 			if (fileResults.successful && fileResults.successful.length > 0) {
 				// Download output to uploads directory
 				const uploadsDir = path.resolve(__dirname, '../uploads');
@@ -172,7 +171,6 @@ async function speechToTextAndRate(file) {
 				model: 'saaras:v3',
 				mode: 'transcribe',
 			});
-			console.log("the servam response is ",response);
 			text = response?.transcript || '';
 		}
 
@@ -185,7 +183,6 @@ async function speechToTextAndRate(file) {
 			if (matched) score += item.points;
 			rubricBreakdown.push({ label: item.label, matched, points });
 		}
-console.log("the text is ",text);
 		// Clamp score to 1-10 (never 0 for a real call)
 		const rating = Math.max(1, Math.min(10, score));
 		return { text, rating, rubricBreakdown };
