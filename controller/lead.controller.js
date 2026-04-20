@@ -41,10 +41,12 @@ exports.createLead = async (req, res) => {
     }
     // Auto-assign employee logic
     let assignedTo = null;
-    const employees = await employeeModel.find({
-      company,
-      status: 1
-    }).select("_id");
+    const employees = await employeeModel
+      .find({
+        company,
+        status: 1,
+      })
+      .select("_id");
     console.log("Active employees for company:", employees);
     if (employees.length === 1) {
       assignedTo = employees[0]._id;
@@ -52,9 +54,12 @@ exports.createLead = async (req, res) => {
       // Find employee with fewest leads for this campaign
       const counts = await Promise.all(
         employees.map(async (emp) => {
-          const count = await Lead.countDocuments({ campigne, assignedTo: emp._id });
+          const count = await Lead.countDocuments({
+            campigne,
+            assignedTo: emp._id,
+          });
           return { empId: emp._id, count };
-        })
+        }),
       );
       counts.sort((a, b) => a.count - b.count);
       assignedTo = counts[0].empId;
@@ -66,7 +71,7 @@ exports.createLead = async (req, res) => {
       createdBy,
       status: status || "created",
       deleted: false,
-      ...(assignedTo ? { assignedTo } : {})
+      ...(assignedTo ? { assignedTo } : {}),
     });
     await lead.save();
     res.status(201).json(lead);
@@ -87,6 +92,7 @@ exports.getLeads = async (req, res) => {
       campigne,
       contacted = "all",
       assignedTo,
+      includeLost = "false",
     } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
@@ -103,11 +109,24 @@ exports.getLeads = async (req, res) => {
     if (search) {
       query.$or = [
         { "leadData.name": { $regex: search, $options: "i" } },
-        { "leadData.phone": { $regex: search, $options: "i" } }
+        { "leadData.phone": { $regex: search, $options: "i" } },
       ];
     }
-    if(assignedTo){
+    if (assignedTo) {
       query.assignedTo = assignedTo;
+    }
+    // Always apply lost exclusion LAST so it cannot be overwritten by other filters
+    if (includeLost !== "true") {
+      if (!query.status) {
+        query.status = { $ne: "lost" };
+      } else if (typeof query.status === "string") {
+        // A specific status is already set; if someone somehow passes 'lost', block it
+        if (query.status === "lost") query.status = { $in: [] };
+      } else if (typeof query.status === "object") {
+        // e.g. contacted filter set { $ne: "created" } — add $ne: "lost" via $and
+        if (!query.$and) query.$and = [];
+        query.$and.push({ status: { $ne: "lost" } });
+      }
     }
     const total = await Lead.countDocuments(query);
     const leads = await Lead.find(query)
@@ -179,7 +198,10 @@ exports.updateLead = async (req, res) => {
     if (assignedTo) updateData.assignedTo = assignedTo;
 
     // Get the previous lead to compare callRecording
-    const prevLead = await Lead.findOne({ _id: req.params.id, deleted: { $ne: true } }).lean();
+    const prevLead = await Lead.findOne({
+      _id: req.params.id,
+      deleted: { $ne: true },
+    }).lean();
     if (!prevLead) {
       await session.abortTransaction();
       session.endSession();
@@ -192,7 +214,8 @@ exports.updateLead = async (req, res) => {
     if (
       callRecording &&
       typeof callRecording === "string" &&
-      (callRecording.startsWith("http://") || callRecording.startsWith("https://")) &&
+      (callRecording.startsWith("http://") ||
+        callRecording.startsWith("https://")) &&
       callRecording !== prevLead.callRecording
     ) {
       shouldProcessSpeech = true;
@@ -218,7 +241,9 @@ exports.updateLead = async (req, res) => {
         // Populate assignedTo to get the name
         let assignedToName = "";
         if (lead.assignedTo) {
-          const assignedEmp = await Employee.findById(lead.assignedTo).select('name');
+          const assignedEmp = await Employee.findById(lead.assignedTo).select(
+            "name",
+          );
           assignedToName = assignedEmp ? assignedEmp.name : "";
         }
         const clientData = {
@@ -236,18 +261,15 @@ exports.updateLead = async (req, res) => {
       } catch (clientErr) {
         await session.abortTransaction();
         session.endSession();
-        return res
-          .status(500)
-          .json({
-            message: "Failed to create client from lead",
-            error: clientErr.message,
-          });
+        return res.status(500).json({
+          message: "Failed to create client from lead",
+          error: clientErr.message,
+        });
       }
     }
     await session.commitTransaction();
     session.endSession();
     res.json(lead);
-
 
     // ASYNC: If call recording changed, process speech-to-text and rating
     if (shouldProcessSpeech && companyIdForSpeech) {
@@ -256,7 +278,9 @@ exports.updateLead = async (req, res) => {
           try {
             await consumeCompanyCredits(companyIdForSpeech, 1);
           } catch (creditErr) {
-            require("../utils/logger").error("Async speech-to-text: " + creditErr.message);
+            require("../utils/logger").error(
+              "Async speech-to-text: " + creditErr.message,
+            );
             return;
           }
           // Pass the URL directly to speechToTextAndRate
@@ -264,11 +288,13 @@ exports.updateLead = async (req, res) => {
           // Update the lead with transcription and rating
           // Ensure ai_review is always an array, not a string
           let ai_review = result?.rubricBreakdown;
-          if (typeof ai_review === 'string') {
+          if (typeof ai_review === "string") {
             try {
               ai_review = JSON.parse(ai_review);
             } catch (e) {
-              require("../utils/logger").error("Failed to parse ai_review: " + e.message);
+              require("../utils/logger").error(
+                "Failed to parse ai_review: " + e.message,
+              );
               ai_review = [];
             }
           }
@@ -277,13 +303,15 @@ exports.updateLead = async (req, res) => {
             {
               callRecordingText: result?.text,
               call_performance: result?.rating,
-              ai_review
+              ai_review,
             },
-            { new: false }
+            { new: false },
           );
         } catch (err) {
           // Log error but do not affect main response
-          require("../utils/logger").error("Async speech-to-text failed: " + err.message);
+          require("../utils/logger").error(
+            "Async speech-to-text failed: " + err.message,
+          );
         }
       })();
     }
@@ -418,7 +446,8 @@ exports.importLeads = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { campaignId, campignName, description, leads, company, createdBy } = req.body;
+    const { campaignId, campignName, description, leads, company, createdBy } =
+      req.body;
 
     // Validate required fields
     if (!company || !mongoose.Types.ObjectId.isValid(company)) {
@@ -444,7 +473,9 @@ exports.importLeads = async (req, res) => {
     if (leads.length > 5000) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: "Maximum 5000 leads per import." });
+      return res
+        .status(400)
+        .json({ message: "Maximum 5000 leads per import." });
     }
 
     // Campaign handling
@@ -454,29 +485,37 @@ exports.importLeads = async (req, res) => {
       if (!campignName || !description) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(400).json({ message: "campignName and description required if campaignId not provided." });
+        return res.status(400).json({
+          message:
+            "campignName and description required if campaignId not provided.",
+        });
       }
       // Create new campaign
       const Campigne = require("../model/campigne.model");
-      const newCamp = await Campigne.create([
-        {
-          title: campignName,
-          description,
-          company,
-          createdBy: createdBy || null,
-          status: 2, // started
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-      ], { session });
+      const newCamp = await Campigne.create(
+        [
+          {
+            title: campignName,
+            description,
+            company,
+            createdBy: createdBy || null,
+            status: 2, // started
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        { session },
+      );
       resolvedCampaignId = newCamp[0]._id;
     }
 
     // Fetch all active employees for the company
-    const employees = await employeeModel.find({
-      company,
-      status: 1
-    }).select("_id");
+    const employees = await employeeModel
+      .find({
+        company,
+        status: 1,
+      })
+      .select("_id");
 
     const failedRows = [];
     const insertedLeads = [];
@@ -520,7 +559,7 @@ exports.importLeads = async (req, res) => {
           createdBy: createdBy || null,
           status: "created",
           deleted: false,
-          ...(assignedTo ? { assignedTo } : {})
+          ...(assignedTo ? { assignedTo } : {}),
         });
         await lead.save({ session });
         insertedLeads.push(lead);
