@@ -9,16 +9,25 @@ const employeeModel = require("../model/employee.model");
   module.exports = function (requiredPermission, allowedEntities) {
     return async function (req, res, next) {
       // Allow login routes to bypass permission and token checks
-      const loginRoutes = [
-        '/admin/login',
-        '/company/login',
-        '/employees/login',
+      const publicRoutes = [
+        { method: 'POST', path: '/admin/login' },
+        { method: 'POST', path: '/company/login' },
+        { method: 'POST', path: '/employees/login' },
+        { method: 'GET', path: '/campigne/:id' },
+        { method: 'POST', path: '/leads' },
       ];
-      // Check for POST method and login route
-      if (
-        req.method === 'POST' &&
-        loginRoutes.some((route) => req.path === route || req.originalUrl.endsWith(route))
-      ) {
+      // Check for public route (method and path match)
+      const isPublic = publicRoutes.some(route => {
+        if (route.method !== req.method) return false;
+        // Simple path match or parameterized match for /campigne/:id
+        if (route.path.includes(':')) {
+          // Convert /campigne/:id to regex
+          const regex = new RegExp('^' + route.path.replace(/:[^/]+/g, '[^/]+') + '$');
+          return regex.test(req.path);
+        }
+        return req.path === route.path || req.originalUrl.endsWith(route.path);
+      });
+      if (isPublic) {
         return next();
       }
       try {
