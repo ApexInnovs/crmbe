@@ -18,6 +18,7 @@ const campigneRoutes = require('./campigne.route');
 
 const uploadsRoutes = require('./uploads.route');
 const dashboardRoutes = require('./dashboard.route');
+const twiloRoutes = require('./twilo.route');
 
 router.use(dashboardRoutes);
 router.use(campigneRoutes);
@@ -30,5 +31,6 @@ router.use(employeeRoutes);
 router.use(leadRoutes);
 router.use(adminRoutes);
 router.use(uploadsRoutes);
+router.use(twiloRoutes);
 
 module.exports = router;

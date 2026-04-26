@@ -15,6 +15,8 @@ const employeeModel = require("../model/employee.model");
         { method: 'POST', path: '/employees/login' },
         { method: 'GET', path: '/campigne/:id' },
         { method: 'POST', path: '/leads' },
+        { method: 'POST', path: '/twilo/voice-handler' },
+        { method: 'POST', path: '/twilo/recording' }
       ];
       // Check for public route (method and path match)
       const isPublic = publicRoutes.some(route => {
