@@ -31,6 +31,6 @@ router.use(employeeRoutes);
 router.use(leadRoutes);
 router.use(adminRoutes);
 router.use(uploadsRoutes);
-router.use(twiloRoutes);
+// router.use(twiloRoutes);
 
 module.exports = router;
