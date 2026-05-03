@@ -85,7 +85,7 @@ exports.getLeads = async (req, res) => {
   try {
     let {
       page = 1,
-      limit = 10,
+      limit = 200,
       search = "",
       status,
       company,
@@ -401,7 +401,7 @@ exports.assignLeadsToEmployee = async (req, res) => {
 // Get leads by campaign and employee (with pagination)
 exports.getLeadsByCampaignAndEmployee = async (req, res) => {
   try {
-    let { campigne, assignedTo, status, page = 1, limit = 10 } = req.query;
+    let { campigne, assignedTo, status, page = 1, limit = 200 } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
     const query = { deleted: { $ne: true } };
